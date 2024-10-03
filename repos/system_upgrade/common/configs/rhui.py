@@ -10,20 +10,9 @@ from leapp.actors.configs import Config
 from leapp.models import fields
 
 
-class RhuiSrcPkg(Config):
-    section = "rhui"
-    name = "src_pkg"
-    type_ = fields.String(default="rhui")
-    default = "rhui"
-    description = """
-        The name of the source RHUI client RPM (installed on the system).
-        Default: rhui.
-    """
-
-
 class RhuiTargetPkg(Config):
     section = "rhui"
-    name = "target_pkg"
+    name = "target_client_name"
     type_ = fields.String(default="rhui")
     default = "rhui"
     description = """
@@ -31,51 +20,50 @@ class RhuiTargetPkg(Config):
         Default: rhui
     """
 
-
-class RhuiLeappRhuiPkg(Config):
+class RhuiCloudProvider(Config):
     section = "rhui"
-    name = "leapp_rhui_pkg"
-    type_ = fields.String(default="leapp-rhui")
-    default = "leapp-rhui"
+    name = "cloud_provider"
+    type_ = fields.String(default="rhui")
+    default = "provider"
     description = """
-    The name of the leapp-rhui RPM.  Default: leapp-rhui
+        Cloud provider name that should be used internally by leapp.
+
+        Leapp recognizes the following cloud providers:
+            - azure
+            - azure-sap-apps
+            - azure-sap-ha
+            - aws
+            - aws-sap
+            - google
+            - google-sap
+
+        Cloud provider information is used for triggering some provider-specific modifications. The value also
+        influences how leapp determines target repositories to enable.
     """
 
-
-class RhuiLeappRhuiPkgRepo(Config):
+class RhuiUpgradeFiles(Config):
     section = "rhui"
-    name = "leapp_rhui_pkg_repo"
-    type_ = fields.String(default="rhel-base")
-    default = "rhel-base"
+    name = "upgrade_files"
+    type_ = fields.StringMap(fields.String())
     description = """
-        The repository ID containing the specified leapp-rhui RPM.
-        Default: rhel-base
+        A mapping from source file paths to the destination where should they be
+        placed in the upgrade container.
+
+        Typically, these files should be provided by leapp-rhui-<PROVIDER> packages.
+
+        These files are needed to facilitate access to target repositories. Typical examples are: repofile(s),
+        certificates and keys.
     """
 
-
-all_rhui_cfg = (RhuiSrcPkg, RhuiTargetPkg, RhuiLeappRhuiPkg, RhuiLeappRhuiPkg)
-# Usage: from configs import rhui
-#        class MyActor:
-#            [...]
-#            configs = all_rhui_cfg + (MyConfig,)
-
-# TODO: We need to implement fields.Map before this can be enabled
-'''
-class RhuiFileMap(Config):
+class RhuiEnabledTargetRepositories(Config):
     section = "rhui"
-    name = "file_map"
-    type_ = fields.Map(fields.String())
+    name = "enabled_target_repositories"
+    type_ = fields.List(fields.String())
     description = """
-        Define directories to which paritcular files provided by the leapp-rhui
-        RPM should be installed. The files in 'files_map' are provided by
-        special Leapp rpms (per cloud) and are supposed to be delivered into the
-        repos/system_upgrade/common/files/rhui/<PROVIDER> directory.
+        List of target repositories enabled during the upgrade. Similar to executing leapp with --enablerepo.
 
-        These files are usually needed to get access to the target system repositories
-        using RHUI. Typically these are certificates, keys, and repofiles with the
-        target RHUI repositories.
-
-        The key is the name of the file, the value is the expected directory
-        where the file should be installed on the upgraded system.
+        The repositories to be enabled need to be either in the repofiles givin within `upgrade_files` option,
+        or in repofiles present on the source system.
     """
-'''
+
+all_rhui_cfg = (RhuiTargetPkg, RhuiUpgradeFiles, RhuiEnabledTargetRepositories, RhuiCloudProvider)
