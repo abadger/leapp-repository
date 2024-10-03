@@ -9,10 +9,12 @@ from leapp.libraries.common.config import version
 from leapp.libraries.stdlib import api
 from leapp.models import (
     CopyFile,
+    CustomTargetRepository,
     DNFPluginTask,
     InstalledRPM,
     RHUIInfo,
     RpmTransactionTasks,
+    TargetRepositories,
     TargetRHUIPostInstallTasks,
     TargetRHUIPreInstallTasks,
     TargetRHUISetupInfo,
@@ -291,11 +293,11 @@ def produce_rhui_info_to_setup_target(rhui_family, source_setup_desc, target_set
     api.produce(rhui_info)
 
 
-def produce_rpms_to_install_into_target(source_setup, target_setup):
-    to_install = sorted(target_setup.clients - source_setup.clients)
-    to_remove = sorted(source_setup.clients - target_setup.clients)
+def produce_rpms_to_install_into_target(source_clients, target_clients):
+    to_install = sorted(target_clients - source_clients)
+    to_remove = sorted(source_clients - target_clients)
 
-    api.produce(TargetUserSpacePreupgradeTasks(install_rpms=sorted(target_setup.clients)))
+    api.produce(TargetUserSpacePreupgradeTasks(install_rpms=sorted(target_clients)))
     if to_install or to_remove:
         api.produce(RpmTransactionTasks(to_install=to_install, to_remove=to_remove))
 
@@ -316,7 +318,47 @@ def inform_about_upgrade_with_rhui_without_no_rhsm():
     return False
 
 
+def emit_rhui_setup_tasks_based_on_config(rhui_config_dict):
+    files_to_copy_into_overlay = [CopyFile(src=key, dst=value) for key, value in rhui_config_dict['upgrade_files']]
+    preinstall_tasks = TargetRHUIPreInstallTasks(files_to_copy_into_overlay=files_to_copy_into_overlay)
+
+    target_client_setup_info = TargetRHUISetupInfo(
+        preinstall_tasks=preinstall_tasks,
+        postinstall_tasks=TargetRHUIPostInstallTasks(),
+        bootstrap_target_client=False,  # We don't need to install the client into overlay - user provided all files
+    )
+
+    rhui_info = RHUIInfo(
+        provider=rhui_config_dict['cloud_provider'],
+        variant=rhui_config_dict['image_variant'],
+        src_client_pkg_names=list(),
+        target_client_pkg_names=rhui_config_dict['target_clients_names'],
+        target_client_setup_info=target_client_setup_info
+    )
+    api.produce(rhui_info)
+
+
+def request_configured_repos_to_be_enabled(rhui_config):
+    custom_repos = [CustomTargetRepository(repoid=repoid) for repoid in rhui_config['enabled_target_repositories']]
+    if custom_repos:
+        target_repos = TargetRepositories(custom_repos=custom_repos)
+        api.produce(target_repos)
+
+
 def process():
+    rhui_config = api.current_actor().config['rhui']
+    expected_fields = (
+        'target_clients', 'source_clients', 'image_variant',
+        'cloud_provider', 'upgrade_files', 'enabled_target_repositories'
+    )
+
+    if all(expected_field in rhui_config for expected_field in expected_fields):
+        api.current_logger().info('Skipping RHUI upgrade auto-configuration - using provided config instead.')
+        emit_rhui_setup_tasks_based_on_config(rhui_config)
+        produce_rpms_to_install_into_target(set(rhui_config['source_clients']), set(rhui_config['target_clients']))
+        request_configured_repos_to_be_enabled(rhui_config)
+        return
+
     installed_rpm = itertools.chain(*[installed_rpm_msg.items for installed_rpm_msg in api.consume(InstalledRPM)])
     installed_pkgs = {rpm.name for rpm in installed_rpm}
 
@@ -342,7 +384,9 @@ def process():
     # Instruction on how to access the target content
     produce_rhui_info_to_setup_target(src_rhui_setup.family, src_rhui_setup.description, target_setup_desc)
 
-    produce_rpms_to_install_into_target(src_rhui_setup.description, target_setup_desc)
+    source_clients = src_rhui_setup.description.clients
+    target_clients = target_setup_desc.clients
+    produce_rpms_to_install_into_target(source_clients, target_clients)
 
     if src_rhui_setup.family.provider == rhui.RHUIProvider.AWS:
         # We have to disable Amazon-id plugin in the initramdisk phase as there is no network
