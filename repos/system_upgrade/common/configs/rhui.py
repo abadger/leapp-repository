@@ -10,15 +10,27 @@ from leapp.actors.configs import Config
 from leapp.models import fields
 
 
+class RhuiSourcePkg(Config):
+    section = "rhui"
+    name = "source_clients"
+    type_ = fields.List(fields.String(default=["rhui"]))
+    default = ["rhui"]
+    description = """
+        The name of the source RHUI client RPMs (to be removed from the system).
+        Default: rhui
+    """
+
+
 class RhuiTargetPkg(Config):
     section = "rhui"
-    name = "target_client_name"
-    type_ = fields.String(default="rhui")
-    default = "rhui"
+    name = "target_clients"
+    type_ = fields.List(fields.String(default=["rhui"]))
+    default = ["rhui"]
     description = """
         The name of the target RHUI client RPM (to be installed on the system).
         Default: rhui
     """
+
 
 class RhuiCloudProvider(Config):
     section = "rhui"
@@ -30,16 +42,34 @@ class RhuiCloudProvider(Config):
 
         Leapp recognizes the following cloud providers:
             - azure
-            - azure-sap-apps
-            - azure-sap-ha
             - aws
-            - aws-sap
             - google
-            - google-sap
 
         Cloud provider information is used for triggering some provider-specific modifications. The value also
         influences how leapp determines target repositories to enable.
     """
+
+
+# @Note(mhecko): We likely don't need this. We need the variant primarily to grab files from a correct directory
+# in leapp-rhui-<provider> folders.
+class RhuiCloudVariant(Config):
+    section = "rhui"
+    name = "image_variant"
+    type_ = fields.String(default="ordinary")
+    default = "ordinary"
+    description = """
+        RHEL variant of the source system - is the source system SAP-specific image?
+
+        Leapp recognizes the following cloud providers:
+            - ordinary    # The source system has not been deployed from a RHEL with SAP image
+            - sap         # RHEL SAP images
+            - sap-apps    # RHEL SAP Apps images (Azure only)
+            - sap-ha      # RHEL HA Apps images (HA only)
+
+        Cloud provider information is used for triggering some provider-specific modifications. The value also
+        influences how leapp determines target repositories to enable.
+    """
+
 
 class RhuiUpgradeFiles(Config):
     section = "rhui"
@@ -54,6 +84,7 @@ class RhuiUpgradeFiles(Config):
         These files are needed to facilitate access to target repositories. Typical examples are: repofile(s),
         certificates and keys.
     """
+
 
 class RhuiEnabledTargetRepositories(Config):
     section = "rhui"
