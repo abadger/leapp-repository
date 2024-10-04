@@ -6,7 +6,7 @@ is not valid. In such cases it's possible to provide the correct expected
 RHUI data to correct the in-place upgrade process.
 """
 
-from leapp.actors.configs import Config
+from leapp.actors.config import Config
 from leapp.models import fields
 
 

@@ -2,7 +2,7 @@ import os
 import sys
 import uuid
 
-from leapp.actor import config as actor_config
+from leapp.actors import config as actor_config
 from leapp.cli.commands import command_utils
 from leapp.cli.commands.config import get_config
 from leapp.cli.commands.upgrade import breadcrumbs, util
