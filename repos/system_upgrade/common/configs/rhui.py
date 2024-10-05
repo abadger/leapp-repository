@@ -10,8 +10,23 @@ from leapp.actors.config import Config
 from leapp.models import fields
 
 
-class RhuiSourcePkg(Config):
-    section = "rhui"
+RHUI_CONFIG_SECTION = 'rhui'
+
+# @Note(mhecko): We use to distinguish config instantiated from default values that we should ignore
+# #              Maybe we could make all config values None and detect it that way, but then we cannot
+# #              give the user an example how the config should look like.
+class RhuiUseConfig(Config):
+    section = RHUI_CONFIG_SECTION
+    name = "use_config"
+    type_ = fields.Boolean(default=False)
+    default = False
+    description = """
+        Use values provided in the configuration file to override leapp's decisions.
+    """
+
+
+class RhuiSourcePkgs(Config):
+    section = RHUI_CONFIG_SECTION
     name = "source_clients"
     type_ = fields.List(fields.String(default=["rhui"]))
     default = ["rhui"]
@@ -21,10 +36,10 @@ class RhuiSourcePkg(Config):
     """
 
 
-class RhuiTargetPkg(Config):
-    section = "rhui"
+class RhuiTargetPkgs(Config):
+    section = RHUI_CONFIG_SECTION
     name = "target_clients"
-    type_ = fields.List(fields.String(default=["rhui"]))
+    type_ = fields.List(fields.String(), default=["rhui"])
     default = ["rhui"]
     description = """
         The name of the target RHUI client RPM (to be installed on the system).
@@ -33,7 +48,7 @@ class RhuiTargetPkg(Config):
 
 
 class RhuiCloudProvider(Config):
-    section = "rhui"
+    section = RHUI_CONFIG_SECTION
     name = "cloud_provider"
     type_ = fields.String(default="rhui")
     default = "provider"
@@ -53,7 +68,7 @@ class RhuiCloudProvider(Config):
 # @Note(mhecko): We likely don't need this. We need the variant primarily to grab files from a correct directory
 # in leapp-rhui-<provider> folders.
 class RhuiCloudVariant(Config):
-    section = "rhui"
+    section = RHUI_CONFIG_SECTION
     name = "image_variant"
     type_ = fields.String(default="ordinary")
     default = "ordinary"
@@ -72,9 +87,10 @@ class RhuiCloudVariant(Config):
 
 
 class RhuiUpgradeFiles(Config):
-    section = "rhui"
+    section = RHUI_CONFIG_SECTION
     name = "upgrade_files"
     type_ = fields.StringMap(fields.String())
+    default = dict()
     description = """
         A mapping from source file paths to the destination where should they be
         placed in the upgrade container.
@@ -87,7 +103,7 @@ class RhuiUpgradeFiles(Config):
 
 
 class RhuiEnabledTargetRepositories(Config):
-    section = "rhui"
+    section = RHUI_CONFIG_SECTION
     name = "enabled_target_repositories"
     type_ = fields.List(fields.String())
     description = """
@@ -96,5 +112,15 @@ class RhuiEnabledTargetRepositories(Config):
         The repositories to be enabled need to be either in the repofiles givin within `upgrade_files` option,
         or in repofiles present on the source system.
     """
+    default = list()
 
-all_rhui_cfg = (RhuiTargetPkg, RhuiUpgradeFiles, RhuiEnabledTargetRepositories, RhuiCloudProvider)
+
+all_rhui_cfg = (
+    RhuiTargetPkgs,
+    RhuiUpgradeFiles,
+    RhuiEnabledTargetRepositories,
+    RhuiCloudProvider,
+    RhuiCloudVariant,
+    RhuiSourcePkgs,
+    RhuiUseConfig
+)

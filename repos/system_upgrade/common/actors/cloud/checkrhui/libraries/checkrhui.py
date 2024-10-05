@@ -6,6 +6,16 @@ from leapp import reporting
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.common import rhsm, rhui
 from leapp.libraries.common.config import version
+import leapp.configs.common.rhui as rhui_config_lib
+from leapp.configs.common.rhui import (  # Import all config fields so we are not using their name attributes directly
+    RhuiEnabledTargetRepositories,
+    RhuiCloudProvider,
+    RhuiCloudVariant,
+    RhuiSourcePkgs,
+    RhuiTargetPkgs,
+    RhuiUpgradeFiles,
+    RhuiUseConfig,
+)
 from leapp.libraries.stdlib import api
 from leapp.models import (
     CopyFile,
@@ -20,6 +30,7 @@ from leapp.models import (
     TargetRHUISetupInfo,
     TargetUserSpacePreupgradeTasks
 )
+
 
 MatchingSetup = namedtuple('MatchingSetup', ['family', 'description'])
 
@@ -319,7 +330,8 @@ def inform_about_upgrade_with_rhui_without_no_rhsm():
 
 
 def emit_rhui_setup_tasks_based_on_config(rhui_config_dict):
-    files_to_copy_into_overlay = [CopyFile(src=key, dst=value) for key, value in rhui_config_dict['upgrade_files']]
+    config_upgrade_files = rhui_config_dict[RhuiUpgradeFiles.name]
+    files_to_copy_into_overlay = [CopyFile(src=key, dst=value) for key, value in config_upgrade_files.items()]
     preinstall_tasks = TargetRHUIPreInstallTasks(files_to_copy_into_overlay=files_to_copy_into_overlay)
 
     target_client_setup_info = TargetRHUISetupInfo(
@@ -329,33 +341,34 @@ def emit_rhui_setup_tasks_based_on_config(rhui_config_dict):
     )
 
     rhui_info = RHUIInfo(
-        provider=rhui_config_dict['cloud_provider'],
-        variant=rhui_config_dict['image_variant'],
+        provider=rhui_config_dict[RhuiCloudProvider.name],
+        variant=rhui_config_dict[RhuiCloudVariant.name],
         src_client_pkg_names=list(),
-        target_client_pkg_names=rhui_config_dict['target_clients_names'],
+        target_client_pkg_names=rhui_config_dict[RhuiTargetPkgs.name],
         target_client_setup_info=target_client_setup_info
     )
     api.produce(rhui_info)
 
 
 def request_configured_repos_to_be_enabled(rhui_config):
-    custom_repos = [CustomTargetRepository(repoid=repoid) for repoid in rhui_config['enabled_target_repositories']]
+    config_repos_to_enable = rhui_config[RhuiEnabledTargetRepositories.name]
+    custom_repos = [CustomTargetRepository(repoid=repoid) for repoid in config_repos_to_enable]
     if custom_repos:
-        target_repos = TargetRepositories(custom_repos=custom_repos)
+        target_repos = TargetRepositories(custom_repos=custom_repos, rhel_repos=[])
         api.produce(target_repos)
 
 
 def process():
-    rhui_config = api.current_actor().config['rhui']
-    expected_fields = (
-        'target_clients', 'source_clients', 'image_variant',
-        'cloud_provider', 'upgrade_files', 'enabled_target_repositories'
-    )
+    rhui_config = api.current_actor().config[rhui_config_lib.RHUI_CONFIG_SECTION]
 
-    if all(expected_field in rhui_config for expected_field in expected_fields):
+    if rhui_config[RhuiUseConfig.name]:
         api.current_logger().info('Skipping RHUI upgrade auto-configuration - using provided config instead.')
         emit_rhui_setup_tasks_based_on_config(rhui_config)
-        produce_rpms_to_install_into_target(set(rhui_config['source_clients']), set(rhui_config['target_clients']))
+
+        src_clients = set(rhui_config[RhuiSourcePkgs.name])
+        target_clients = set(rhui_config[RhuiTargetPkgs.name])
+        produce_rpms_to_install_into_target(src_clients, target_clients)
+
         request_configured_repos_to_be_enabled(rhui_config)
         return
 
