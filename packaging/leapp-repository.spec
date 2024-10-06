@@ -243,6 +243,9 @@ install -m 0755 -d %{buildroot}%{_sysconfdir}/leapp/transaction/
 install -m 0755 -d %{buildroot}%{_sysconfdir}/leapp/files/
 install -m 0644 etc/leapp/transaction/* %{buildroot}%{_sysconfdir}/leapp/transaction
 install -m 0644 etc/leapp/files/* %{buildroot}%{_sysconfdir}/leapp/files
+
+# Actor configuration
+install -m 0755 -d %{buildroot}%{_sysconfdir}/leapp/actor_conf.d/
 install -m 0644 etc/leapp/actor_conf.d/* %{buildroot}%{_sysconfdir}/leapp/actor_conf.d
 
 # install CLI commands for the leapp utility on the expected path
@@ -294,6 +297,7 @@ done;
 %{_sysconfdir}/leapp/transaction/*
 %{repositorydir}/*
 %{leapp_python_sitelib}/leapp/cli/commands/*
+%{_sysconfdir}/leapp/actor_conf.d/*
 
 
 %files -n %{lpr_name}-deps
