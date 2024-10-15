@@ -3,7 +3,7 @@ import os
 from collections import namedtuple
 
 from leapp import reporting
-from leapp.exceptions import StopActorExecutionError
+from leapp.exceptions import StopActorExecution, StopActorExecutionError
 from leapp.libraries.common import rhsm, rhui
 from leapp.libraries.common.config import version
 import leapp.configs.common.rhui as rhui_config_lib
@@ -358,12 +358,33 @@ def request_configured_repos_to_be_enabled(rhui_config):
         api.produce(target_repos)
 
 
+def stop_with_err_if_config_invalid(config):
+    required_fields = [
+        RhuiEnabledTargetRepositories,
+        RhuiCloudProvider,
+        # RhuiCloudVariant, <- this is not required
+        RhuiSourcePkgs,
+        RhuiTargetPkgs,
+        RhuiUpgradeFiles,
+    ]
+
+    missing_fields = tuple(field for field in required_fields if not config[field.name])
+    if missing_fields:
+        field_names = (field.name for field in missing_fields)
+        missing_fields_str = ', '.join(field_names)
+        details = 'The following required RHUI config fields are missing or they are set to an empty value: {}'
+        details = details.format(missing_fields_str)
+        raise StopActorExecution('Provided RHUI config is missing values for required fields.',
+                                 details={'details': details})
+
+
 def process():
     rhui_config = api.current_actor().config[rhui_config_lib.RHUI_CONFIG_SECTION]
 
     if rhui_config[RhuiUseConfig.name]:
         api.current_logger().info('Skipping RHUI upgrade auto-configuration - using provided config instead.')
         emit_rhui_setup_tasks_based_on_config(rhui_config)
+        stop_with_err_if_config_invalid(rhui_config)
 
         src_clients = set(rhui_config[RhuiSourcePkgs.name])
         target_clients = set(rhui_config[RhuiTargetPkgs.name])

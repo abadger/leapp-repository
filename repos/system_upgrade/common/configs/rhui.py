@@ -28,8 +28,8 @@ class RhuiUseConfig(Config):
 class RhuiSourcePkgs(Config):
     section = RHUI_CONFIG_SECTION
     name = "source_clients"
-    type_ = fields.List(fields.String(default=["rhui"]))
-    default = ["rhui"]
+    type_ = fields.List(fields.String())
+    default = []
     description = """
         The name of the source RHUI client RPMs (to be removed from the system).
         Default: rhui
@@ -39,8 +39,8 @@ class RhuiSourcePkgs(Config):
 class RhuiTargetPkgs(Config):
     section = RHUI_CONFIG_SECTION
     name = "target_clients"
-    type_ = fields.List(fields.String(), default=["rhui"])
-    default = ["rhui"]
+    type_ = fields.List(fields.String())
+    default = []
     description = """
         The name of the target RHUI client RPM (to be installed on the system).
         Default: rhui
@@ -51,7 +51,7 @@ class RhuiCloudProvider(Config):
     section = RHUI_CONFIG_SECTION
     name = "cloud_provider"
     type_ = fields.String(default="rhui")
-    default = "provider"
+    default = ""
     description = """
         Cloud provider name that should be used internally by leapp.
 

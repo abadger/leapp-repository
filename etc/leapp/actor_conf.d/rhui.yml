@@ -1,5 +1,5 @@
 rhui:
-  use_config : True
+  use_config : False
   source_clients: [ rh-amazon-rhui-client ]
   target_clients: [ rh-amazon-rhui-client ]
   cloud_provider: aws
