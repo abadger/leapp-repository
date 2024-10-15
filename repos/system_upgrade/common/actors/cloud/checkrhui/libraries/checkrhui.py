@@ -8,11 +8,11 @@ from leapp.libraries.common import rhsm, rhui
 from leapp.libraries.common.config import version
 import leapp.configs.common.rhui as rhui_config_lib
 from leapp.configs.common.rhui import (  # Import all config fields so we are not using their name attributes directly
-    RhuiEnabledTargetRepositories,
     RhuiCloudProvider,
     RhuiCloudVariant,
     RhuiSourcePkgs,
     RhuiTargetPkgs,
+    RhuiTargetRepositoriesToUse,
     RhuiUpgradeFiles,
     RhuiUseConfig,
 )
@@ -351,7 +351,7 @@ def emit_rhui_setup_tasks_based_on_config(rhui_config_dict):
 
 
 def request_configured_repos_to_be_enabled(rhui_config):
-    config_repos_to_enable = rhui_config[RhuiEnabledTargetRepositories.name]
+    config_repos_to_enable = rhui_config[RhuiTargetRepositoriesToUse.name]
     custom_repos = [CustomTargetRepository(repoid=repoid) for repoid in config_repos_to_enable]
     if custom_repos:
         target_repos = TargetRepositories(custom_repos=custom_repos, rhel_repos=[])
@@ -360,7 +360,7 @@ def request_configured_repos_to_be_enabled(rhui_config):
 
 def stop_with_err_if_config_invalid(config):
     required_fields = [
-        RhuiEnabledTargetRepositories,
+        RhuiTargetRepositoriesToUse,
         RhuiCloudProvider,
         # RhuiCloudVariant, <- this is not required
         RhuiSourcePkgs,

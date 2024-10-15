@@ -102,9 +102,9 @@ class RhuiUpgradeFiles(Config):
     """
 
 
-class RhuiEnabledTargetRepositories(Config):
+class RhuiTargetRepositoriesToUse(Config):
     section = RHUI_CONFIG_SECTION
-    name = "enabled_target_repositories"
+    name = "rhui_target_repositories_to_use"
     type_ = fields.List(fields.String())
     description = """
         List of target repositories enabled during the upgrade. Similar to executing leapp with --enablerepo.
@@ -118,7 +118,7 @@ class RhuiEnabledTargetRepositories(Config):
 all_rhui_cfg = (
     RhuiTargetPkgs,
     RhuiUpgradeFiles,
-    RhuiEnabledTargetRepositories,
+    RhuiTargetRepositoriesToUse,
     RhuiCloudProvider,
     RhuiCloudVariant,
     RhuiSourcePkgs,
