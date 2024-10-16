@@ -109,7 +109,7 @@ class RhuiTargetRepositoriesToUse(Config):
     description = """
         List of target repositories enabled during the upgrade. Similar to executing leapp with --enablerepo.
 
-        The repositories to be enabled need to be either in the repofiles givin within `upgrade_files` option,
+        The repositories to be enabled need to be either in the repofiles listed in the `upgrade_files` field,
         or in repofiles present on the source system.
     """
     default = list()
