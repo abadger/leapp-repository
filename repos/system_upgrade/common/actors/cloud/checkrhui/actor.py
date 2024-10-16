@@ -10,7 +10,7 @@ from leapp.models import (
     RHUIInfo,
     RpmTransactionTasks,
     TargetRepositories,
-    TargetUserSpacePreupgradeTasks,
+    TargetUserSpacePreupgradeTasks
 )
 from leapp.reporting import Report
 from leapp.tags import FactsPhaseTag, IPUWorkflowTag

@@ -10,9 +10,9 @@ from leapp.libraries.actor import checkrhui as checkrhui_lib
 from leapp.libraries.common import rhsm, rhui
 from leapp.libraries.common.rhui import mk_rhui_setup, RHUIFamily
 from leapp.libraries.common.testutils import (
+    _make_default_config,
     create_report_mocked,
     CurrentActorMocked,
-    _make_default_config,
     produce_mocked
 )
 from leapp.libraries.stdlib import api

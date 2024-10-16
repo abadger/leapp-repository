@@ -2,11 +2,8 @@ import itertools
 import os
 from collections import namedtuple
 
-from leapp import reporting
-from leapp.exceptions import StopActorExecution, StopActorExecutionError
-from leapp.libraries.common import rhsm, rhui
-from leapp.libraries.common.config import version
 import leapp.configs.common.rhui as rhui_config_lib
+from leapp import reporting
 from leapp.configs.common.rhui import (  # Import all config fields so we are not using their name attributes directly
     RhuiCloudProvider,
     RhuiCloudVariant,
@@ -14,8 +11,11 @@ from leapp.configs.common.rhui import (  # Import all config fields so we are no
     RhuiTargetPkgs,
     RhuiTargetRepositoriesToUse,
     RhuiUpgradeFiles,
-    RhuiUseConfig,
+    RhuiUseConfig
 )
+from leapp.exceptions import StopActorExecution, StopActorExecutionError
+from leapp.libraries.common import rhsm, rhui
+from leapp.libraries.common.config import version
 from leapp.libraries.stdlib import api
 from leapp.models import (
     CopyFile,
@@ -30,7 +30,6 @@ from leapp.models import (
     TargetRHUISetupInfo,
     TargetUserSpacePreupgradeTasks
 )
-
 
 MatchingSetup = namedtuple('MatchingSetup', ['family', 'description'])
 
