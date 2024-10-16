@@ -67,6 +67,7 @@ class logger_mocked(object):
     def __call__(self):
         return self
 
+
 def _make_default_config(actor_config_schema):
     """ Make a config dict populated with default values. """
     merged_schema = normalize_schemas((actor_config_schema, ))
