@@ -12,6 +12,7 @@ from leapp.models import fields
 
 RHUI_CONFIG_SECTION = 'rhui'
 
+
 # @Note(mhecko): We use to distinguish config instantiated from default values that we should ignore
 # #              Maybe we could make all config values None and detect it that way, but then we cannot
 # #              give the user an example how the config should look like.
