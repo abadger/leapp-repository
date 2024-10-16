@@ -325,7 +325,6 @@ def test_unknown_target_rhui_setup(monkeypatch, is_target_setup_known):
     monkeypatch.setattr(rhsm, 'skip_rhsm', lambda: True)
     monkeypatch.setattr(rhui, 'RHUI_SETUPS', known_setups)
 
-
     if is_target_setup_known:
         checkrhui_lib.process()
         assert api.produce.called
