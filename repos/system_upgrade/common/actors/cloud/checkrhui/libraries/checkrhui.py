@@ -330,6 +330,21 @@ def inform_about_upgrade_with_rhui_without_no_rhsm():
 
 def emit_rhui_setup_tasks_based_on_config(rhui_config_dict):
     config_upgrade_files = rhui_config_dict[RhuiUpgradeFiles.name]
+
+    nonexisting_files_to_copy = []
+    for source_path in config_upgrade_files:
+        if not os.path.exists(source_path):
+            nonexisting_files_to_copy.append(source_path)
+
+    if nonexisting_files_to_copy:
+        details_lines = ['The following files were not found:']
+        # Use .format and put backticks around paths so that weird unicode spaces will be easily seen
+        details_lines.extend('  - `{0}`'.format(path) for path in nonexisting_files_to_copy)
+        details = '\n'.join(details_lines)
+
+        reason = 'RHUI config lists nonexisting files in its `{0}` field.'.format(RhuiUpgradeFiles.name)
+        raise StopActorExecution(reason, details={'details': details})
+
     files_to_copy_into_overlay = [CopyFile(src=key, dst=value) for key, value in config_upgrade_files.items()]
     preinstall_tasks = TargetRHUIPreInstallTasks(files_to_copy_into_overlay=files_to_copy_into_overlay)
 
