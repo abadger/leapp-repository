@@ -1,20 +1,20 @@
-from collections import defaultdict
 import itertools
-from enum import Enum
 import os
+from collections import defaultdict
+from enum import Enum
 
 import pytest
 
 from leapp import reporting
 from leapp.configs.common.rhui import (
     all_rhui_cfg,
-    RhuiTargetPkgs,
     RhuiCloudProvider,
     RhuiCloudVariant,
     RhuiSourcePkgs,
+    RhuiTargetPkgs,
     RhuiTargetRepositoriesToUse,
     RhuiUpgradeFiles,
-    RhuiUseConfig,
+    RhuiUseConfig
 )
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.actor import checkrhui as checkrhui_lib
