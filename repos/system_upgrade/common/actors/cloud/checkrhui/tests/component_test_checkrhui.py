@@ -412,6 +412,7 @@ def test_config_overwrites_everything(monkeypatch):
     monkeypatch.setattr(api, 'current_actor', actor)
 
     function_calls = defaultdict(int)
+
     def mk_function_probe(fn_name):
         def probe(*args, **kwargs):
             function_calls[fn_name] += 1
