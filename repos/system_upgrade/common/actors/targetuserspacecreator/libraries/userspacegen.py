@@ -1121,7 +1121,8 @@ def _remove_injected_repofiles_from_our_rhui_packages(target_userspace_ctx, rhui
             # The repofile might have been replaced by a new one provided by the RHUI client if names collide
             # Performance: Do the query here and not earlier, because we would be running rpm needlessly
             try:
-                target_userspace_ctx.call(['rpm', '-q', '--whatprovides', dst_in_container])
+                path_with_root = '/' + dst_in_container
+                target_userspace_ctx.call(['rpm', '-q', '--whatprovides', path_with_root])
                 api.current_logger().debug('Repofile {0} kept as it is owned by some RPM.'.format(dst_in_host))
             except CalledProcessError:
                 # rpm exists with 1 if the file is not owned by any RPM. We might be catching all kinds of other
