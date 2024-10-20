@@ -1,10 +1,18 @@
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from enum import Enum
 
 import pytest
 
 from leapp import reporting
-from leapp.configs.common.rhui import all_rhui_cfg
+from leapp.configs.common.rhui import (
+    all_rhui_cfg,
+    RhuiTargetPkgs,
+    RhuiCloudProvider,
+    RhuiSourcePkgs,
+    RhuiTargetRepositoriesToUse,
+    RhuiUpgradeFiles,
+    RhuiUseConfig,
+)
 from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.actor import checkrhui as checkrhui_lib
 from leapp.libraries.common import rhsm, rhui
@@ -21,6 +29,7 @@ from leapp.models import (
     RHUIInfo,
     RPM,
     RpmTransactionTasks,
+    TargetRepositories,
     TargetRHUIPostInstallTasks,
     TargetRHUIPreInstallTasks,
     TargetRHUISetupInfo,
@@ -379,3 +388,83 @@ def test_select_chronologically_closest(monkeypatch, setups, desired_minor, expe
     setup = setups[0]
 
     assert setup == expected_setup
+
+
+def test_config_overwrites_everything(monkeypatch):
+    rhui_config = {
+        RhuiUseConfig.name: True,
+        RhuiSourcePkgs.name: ['client_source'],
+        RhuiTargetPkgs.name: ['client_target'],
+        RhuiCloudProvider.name: {'aws'},
+        RhuiUpgradeFiles.name: {
+            '/root/file.repo': '/etc/yum.repos.d/'
+        },
+        RhuiTargetRepositoriesToUse.name: [
+            'repoid_to_use'
+        ]
+    }
+    all_config = {'rhui': rhui_config}
+
+    actor = CurrentActorMocked(config=all_config)
+    monkeypatch.setattr(api, 'current_actor', actor)
+
+    function_calls = defaultdict(int)
+    def mk_function_probe(fn_name):
+        def probe(*args, **kwargs):
+            function_calls[fn_name] += 1
+        return probe
+
+    monkeypatch.setattr(checkrhui_lib,
+                        'emit_rhui_setup_tasks_based_on_config',
+                        mk_function_probe('emit_rhui_setup_tasks_based_on_config'))
+    monkeypatch.setattr(checkrhui_lib,
+                        'stop_with_err_if_config_invalid',
+                        mk_function_probe('stop_with_err_if_config_invalid'))
+    monkeypatch.setattr(checkrhui_lib,
+                        'produce_rpms_to_install_into_target',
+                        mk_function_probe('produce_rpms_to_install_into_target'))
+    monkeypatch.setattr(checkrhui_lib,
+                        'request_configured_repos_to_be_enabled',
+                        mk_function_probe('request_configured_repos_to_be_enabled'))
+
+    checkrhui_lib.process()
+
+    expected_function_calls = {
+        'emit_rhui_setup_tasks_based_on_config': 1,
+        'stop_with_err_if_config_invalid': 1,
+        'produce_rpms_to_install_into_target': 1,
+        'request_configured_repos_to_be_enabled': 1,
+    }
+
+    assert function_calls == expected_function_calls
+
+
+def test_request_configured_repos_to_be_enabled(monkeypatch):
+    monkeypatch.setattr(api, 'produce', produce_mocked())
+
+    rhui_config = {
+        RhuiUseConfig.name: True,
+        RhuiSourcePkgs.name: ['client_source'],
+        RhuiTargetPkgs.name: ['client_target'],
+        RhuiCloudProvider.name: {'aws'},
+        RhuiUpgradeFiles.name: {
+            '/root/file.repo': '/etc/yum.repos.d/'
+        },
+        RhuiTargetRepositoriesToUse.name: [
+            'repoid1',
+            'repoid2',
+            'repoid3',
+        ]
+    }
+
+    checkrhui_lib.request_configured_repos_to_be_enabled(rhui_config)
+
+    assert api.produce.called
+    assert len(api.produce.model_instances) == 1
+
+    target_repos = api.produce.model_instances[0]
+    assert isinstance(target_repos, TargetRepositories)
+    assert not target_repos.rhel_repos
+
+    custom_repoids = sorted(custom_repo_model.repoid for custom_repo_model in target_repos.custom_repos)
+    assert custom_repoids == ['repoid1', 'repoid2', 'repoid3']
