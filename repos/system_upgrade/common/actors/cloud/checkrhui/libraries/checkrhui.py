@@ -13,7 +13,7 @@ from leapp.configs.common.rhui import (  # Import all config fields so we are no
     RhuiUpgradeFiles,
     RhuiUseConfig
 )
-from leapp.exceptions import StopActorExecution, StopActorExecutionError
+from leapp.exceptions import StopActorExecutionError
 from leapp.libraries.common import rhsm, rhui
 from leapp.libraries.common.config import version
 from leapp.libraries.stdlib import api
@@ -343,7 +343,7 @@ def emit_rhui_setup_tasks_based_on_config(rhui_config_dict):
         details = '\n'.join(details_lines)
 
         reason = 'RHUI config lists nonexisting files in its `{0}` field.'.format(RhuiUpgradeFiles.name)
-        raise StopActorExecution(reason, details={'details': details})
+        raise StopActorExecutionError(reason, details={'details': details})
 
     files_to_copy_into_overlay = [CopyFile(src=key, dst=value) for key, value in config_upgrade_files.items()]
     preinstall_tasks = TargetRHUIPreInstallTasks(files_to_copy_into_overlay=files_to_copy_into_overlay)
@@ -357,7 +357,7 @@ def emit_rhui_setup_tasks_based_on_config(rhui_config_dict):
     rhui_info = RHUIInfo(
         provider=rhui_config_dict[RhuiCloudProvider.name],
         variant=rhui_config_dict[RhuiCloudVariant.name],
-        src_client_pkg_names=list(),
+        src_client_pkg_names=rhui_config_dict[RhuiSourcePkgs.name],
         target_client_pkg_names=rhui_config_dict[RhuiTargetPkgs.name],
         target_client_setup_info=target_client_setup_info
     )
@@ -372,7 +372,7 @@ def request_configured_repos_to_be_enabled(rhui_config):
         api.produce(target_repos)
 
 
-def stop_with_err_if_config_invalid(config):
+def stop_with_err_if_config_missing_fields(config):
     required_fields = [
         RhuiTargetRepositoriesToUse,
         RhuiCloudProvider,
@@ -388,8 +388,8 @@ def stop_with_err_if_config_invalid(config):
         missing_fields_str = ', '.join(field_names)
         details = 'The following required RHUI config fields are missing or they are set to an empty value: {}'
         details = details.format(missing_fields_str)
-        raise StopActorExecution('Provided RHUI config is missing values for required fields.',
-                                 details={'details': details})
+        raise StopActorExecutionError('Provided RHUI config is missing values for required fields.',
+                                      details={'details': details})
 
 
 def process():
@@ -397,8 +397,8 @@ def process():
 
     if rhui_config[RhuiUseConfig.name]:
         api.current_logger().info('Skipping RHUI upgrade auto-configuration - using provided config instead.')
+        stop_with_err_if_config_missing_fields(rhui_config)
         emit_rhui_setup_tasks_based_on_config(rhui_config)
-        stop_with_err_if_config_invalid(rhui_config)
 
         src_clients = set(rhui_config[RhuiSourcePkgs.name])
         target_clients = set(rhui_config[RhuiTargetPkgs.name])
