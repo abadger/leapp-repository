@@ -1,5 +1,7 @@
-from collections import defaultdict, namedtuple
+from collections import defaultdict
+import itertools
 from enum import Enum
+import os
 
 import pytest
 
@@ -8,6 +10,7 @@ from leapp.configs.common.rhui import (
     all_rhui_cfg,
     RhuiTargetPkgs,
     RhuiCloudProvider,
+    RhuiCloudVariant,
     RhuiSourcePkgs,
     RhuiTargetRepositoriesToUse,
     RhuiUpgradeFiles,
@@ -395,7 +398,7 @@ def test_config_overwrites_everything(monkeypatch):
         RhuiUseConfig.name: True,
         RhuiSourcePkgs.name: ['client_source'],
         RhuiTargetPkgs.name: ['client_target'],
-        RhuiCloudProvider.name: {'aws'},
+        RhuiCloudProvider.name: 'aws',
         RhuiUpgradeFiles.name: {
             '/root/file.repo': '/etc/yum.repos.d/'
         },
@@ -418,8 +421,8 @@ def test_config_overwrites_everything(monkeypatch):
                         'emit_rhui_setup_tasks_based_on_config',
                         mk_function_probe('emit_rhui_setup_tasks_based_on_config'))
     monkeypatch.setattr(checkrhui_lib,
-                        'stop_with_err_if_config_invalid',
-                        mk_function_probe('stop_with_err_if_config_invalid'))
+                        'stop_with_err_if_config_missing_fields',
+                        mk_function_probe('stop_with_err_if_config_missing_fields'))
     monkeypatch.setattr(checkrhui_lib,
                         'produce_rpms_to_install_into_target',
                         mk_function_probe('produce_rpms_to_install_into_target'))
@@ -431,7 +434,7 @@ def test_config_overwrites_everything(monkeypatch):
 
     expected_function_calls = {
         'emit_rhui_setup_tasks_based_on_config': 1,
-        'stop_with_err_if_config_invalid': 1,
+        'stop_with_err_if_config_missing_fields': 1,
         'produce_rpms_to_install_into_target': 1,
         'request_configured_repos_to_be_enabled': 1,
     }
@@ -446,7 +449,7 @@ def test_request_configured_repos_to_be_enabled(monkeypatch):
         RhuiUseConfig.name: True,
         RhuiSourcePkgs.name: ['client_source'],
         RhuiTargetPkgs.name: ['client_target'],
-        RhuiCloudProvider.name: {'aws'},
+        RhuiCloudProvider.name: 'aws',
         RhuiUpgradeFiles.name: {
             '/root/file.repo': '/etc/yum.repos.d/'
         },
@@ -468,3 +471,55 @@ def test_request_configured_repos_to_be_enabled(monkeypatch):
 
     custom_repoids = sorted(custom_repo_model.repoid for custom_repo_model in target_repos.custom_repos)
     assert custom_repoids == ['repoid1', 'repoid2', 'repoid3']
+
+
+@pytest.mark.parametrize(
+    ('upgrade_files', 'existing_files'),
+    (
+        (['/root/a', '/root/b'], ['/root/a', '/root/b']),
+        (['/root/a', '/root/b'], ['/root/b']),
+        (['/root/a', '/root/b'], []),
+    )
+)
+def test_missing_files_in_config(monkeypatch, upgrade_files, existing_files):
+    upgrade_files_map = dict((source_path, '/tmp/dummy') for source_path in upgrade_files)
+
+    rhui_config = {
+        RhuiUseConfig.name: True,
+        RhuiSourcePkgs.name: ['client_source'],
+        RhuiTargetPkgs.name: ['client_target'],
+        RhuiCloudProvider.name: 'aws',
+        RhuiCloudVariant.name: 'ordinary',
+        RhuiUpgradeFiles.name: upgrade_files_map,
+        RhuiTargetRepositoriesToUse.name: [
+            'repoid_to_use'
+        ]
+    }
+
+    monkeypatch.setattr(os.path, 'exists', lambda path: path in existing_files)
+    monkeypatch.setattr(api, 'produce', produce_mocked())
+
+    should_error = (len(upgrade_files) != len(existing_files))
+    if should_error:
+        with pytest.raises(StopActorExecutionError):
+            checkrhui_lib.emit_rhui_setup_tasks_based_on_config(rhui_config)
+    else:
+        checkrhui_lib.emit_rhui_setup_tasks_based_on_config(rhui_config)
+        assert api.produce.called
+        assert len(api.produce.model_instances) == 1
+
+        rhui_info = api.produce.model_instances[0]
+        assert isinstance(rhui_info, RHUIInfo)
+        assert rhui_info.provider == 'aws'
+        assert rhui_info.variant == 'ordinary'
+        assert rhui_info.src_client_pkg_names == ['client_source']
+        assert rhui_info.target_client_pkg_names == ['client_target']
+
+        setup_info = rhui_info.target_client_setup_info
+        assert not setup_info.bootstrap_target_client
+
+        _copies_to_perform = setup_info.preinstall_tasks.files_to_copy_into_overlay
+        copies_to_perform = sorted((copy.src, copy.dst) for copy in _copies_to_perform)
+        expected_copies = sorted(zip(upgrade_files, itertools.repeat('/tmp/dummy')))
+
+        assert copies_to_perform == expected_copies
